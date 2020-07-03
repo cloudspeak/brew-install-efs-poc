@@ -2,51 +2,66 @@
 
 # This script uses Homebrew to install the contents of Brewfile to an EFS filesystem,
 # so that the libraries can be used by Lambda.
+#
+# Usage: brew_install_efs.sh [efs_filesystem_id]
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: $0 [efs_filesystem_id]"
     exit 1
 fi
 
+EFS_ID=$1
+
 
 # If EFS has not yet been mounted, mount it
 
-if [ -d "efs" ]; then
-    sudo yum install -y amazon-efs-utils
-    sudo mkdir efs
-    sudo mount -t efs fs-6f04c9a5:/ efs
-    sudo mkdir efs/lambda_packages
+if ! mount | grep -q "$EFS_ID"; then
+    echo "Mounting EFS $EFS_ID into ./efs...";
+    sudo yum install -y amazon-efs-utils;
+    sudo mkdir -p efs;
+    sudo mount -t efs $EFS_ID:/ efs;
+    sudo mkdir -p efs/lambda_packages;
 fi
 
+
 # Docker script which:
-#  1. Installs dependencies with brew
-#  2. Copies them to the EFS lambda_packages/lib folder
-#  3. Ensures that objdump and ld are present
+#  1. Ensures that objdump and ld are present
+#  2. Installs dependencies with brew
+#  3. Copies them to the EFS lambda_packages/lib folder
 
 SCRIPT="
 
-if [ ! -f input/Brewfile ]; then
+if [ ! -f /inputdir/Brewfile ]; then
   echo 'ERROR: Cannot find Brewfile in local directory';
 fi;
 
+sudo mkdir -p /lambda_packages/bin;
+sudo mkdir -p /lambda_packages/lib;
+
+if [ ! -f /lambda_packages/bin/ld ] || [ ! -f /lambda_packages/bin/objdump ]; then
+    echo 'Installing objdump and ld...';
+    sudo yum install -y yum-utils rpmdevtools;
+    sudo yumdownloader --resolve binutils;
+    rpmdev-extract *.rpm;
+    sudo cp -P -R ./binutils*/usr/lib64/* /lambda_packages/lib;
+    sudo cp -P ./binutils*/usr/bin/ld.bfd /lambda_packages/bin/ld;
+    sudo cp -P ./binutils*/usr/bin/objdump /lambda_packages/bin;
+    sudo chmod +x /lambda_packages/bin/ld
+fi
+
 echo 'Invoking brew...'
-cp input/Brewfile .;
-brew bundle install;
+cp /inputdir/Brewfile .;
+brew bundle;
+
 
 echo 'Copying libraries to lambda_packages/lib...';
-mkdir -p /lambda_packages/bin;
-mkdir -p /lambda_packages/lib;
-cp .linuxbrew/lib/*.so /lambda_packages/lib;
+sudo cp -LR /home/linuxbrew/.linuxbrew/lib/* /lambda_packages/lib;
 
-if [ ! -f /lambda_packages/bin/ld || -f /lambda_packages/bin/objdump ]; then
-    echo 'Installing objdump and ld...'
-    yum install -y yum-utils rpmdevtools;
-    yumdownloader --resolve binutils;
-    rpmdev-extract *.rpm;
-    cp -P -R /tmp/binutils*/usr/lib64/* /lambda_packages/lib;
-    cp -P /tmp/binutils*/usr/bin/ld.bfd /lambda_packages/bin/ld;
-    cp -P /tmp/binutils*/usr/bin/objdump /lambda_packages/bin;
+echo 'Done.';
 "
 
 # Run docker to install contents of brewfile
-docker run -v $(pwd):inputdir $(pwd)/efs/lambda_packages:lambda_packages nuagestudio/amazonlinuxbrew bash -c "${SCRIPT}"
+docker run \
+    -v $(pwd):/inputdir \
+    -v $(pwd)/efs/lambda_packages:/lambda_packages \
+    nuagestudio/amazonlinuxbrew bash -c "${SCRIPT}"

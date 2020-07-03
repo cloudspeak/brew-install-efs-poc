@@ -28,14 +28,28 @@ iam.RolePolicyAttachment("VpcAccessPolicyAttach",
 
 # VPC
 
-vpc = ec2.Vpc("exampleVpc", cidr_block="172.32.0.0/16")
-subnet_1 = ec2.Subnet("exampleVpcSubnetA", availability_zone="eu-west-1a", vpc_id=vpc.id, cidr_block="172.32.1.0/24")
-subnet_2 = ec2.Subnet("exampleVpcSubnetB", availability_zone="eu-west-1b", vpc_id=vpc.id, cidr_block="172.32.2.0/24")
-subnet_3 = ec2.Subnet("exampleVpcSubnetC", availability_zone="eu-west-1c", vpc_id=vpc.id, cidr_block="172.32.3.0/24")
-security_group = ec2.SecurityGroup("exampleSecurityGroup", vpc_id=vpc.id)
+vpc = ec2.Vpc("exampleVpc",
+    cidr_block="172.32.0.0/16",
+    enable_dns_hostnames=True,
+    enable_dns_support=True
+)
+subnet_1 = ec2.Subnet("exampleVpcSubnetA",
+    availability_zone="eu-west-1a",
+    vpc_id=vpc.id,
+    cidr_block="172.32.1.0/24",   
+)
+subnet_2 = ec2.Subnet("exampleVpcSubnetB",
+    availability_zone="eu-west-1b",
+    vpc_id=vpc.id,
+    cidr_block="172.32.2.0/24"
+)
+subnet_3 = ec2.Subnet("exampleVpcSubnetC",
+    availability_zone="eu-west-1c",
+    vpc_id=vpc.id,
+    cidr_block="172.32.3.0/24"
+)
 
-# IG
-# Route tables
+security_group = ec2.SecurityGroup("exampleSecurityGroup", vpc_id=vpc.id)
 
 security_group_rule = ec2.SecurityGroupRule("exampleSSHRule",
     security_group_id=security_group.id,
@@ -66,6 +80,16 @@ security_group_rule = ec2.SecurityGroupRule("exampleOutboundRule",
 
 subnets = [subnet_1, subnet_2, subnet_3]
 
+gateway = ec2.InternetGateway("exampleInternetGateway",
+  vpc_id=vpc.id
+)
+
+gateway_route = ec2.Route("exampleGatewayRoute",
+  destination_cidr_block="0.0.0.0/0",
+  gateway_id=gateway.id,
+  route_table_id=vpc.default_route_table_id
+)
+
 
 # EFS
 
@@ -89,33 +113,34 @@ access_point = efs.AccessPoint("exampleAccessPoint",
 
 # Lambda
 
-example_layer = lambda_.LayerVersion("exampleLayer", code="mylayerWithFlac.zip", layer_name="my_layer")
+mount_location = "/mnt/efs"
 
 example_function = lambda_.Function("exampleFunction",
-        #code="app/app-dev-1593082629.zip",
-        #s3_bucket="zappa-l6yusoeer",
-        #s3_key="app-dev-1593082629.zip",
-        code="myfile2.zip",
+        code="lambda.zip",
         name="my_lambda",
-        #handler="handler.lambda_handler",
         handler="handler.my_handler",
         role=example_role.arn,
         runtime="python3.8",
-        layers=[example_layer.arn],
         vpc_config={
           "security_group_ids": [security_group.id],
           "subnet_ids": [subnet_1.id, subnet_2.id, subnet_3.id]
         },
         file_system_config={
-          "arn": file_system.arn,
-          "local_mount_path": "/mnt/lambda_packages"
+          "arn": access_point.arn,
+          "local_mount_path": mount_location
         },
         environment={
-          "LAMBDA_PACKAGES_PATH": "/mnt/lambda_packages"
+          "variables": {
+            "LAMBDA_PACKAGES_PATH": mount_location,
+            "LD_LIBRARY_PATH": f"/var/lang/lib:/lib64:/usr/lib64:/var/runtime:/var/runtime/lib:/var/task:/var/task/lib:/opt/lib:{mount_location}/lambda_packages/lib",
+            "PATH": f"/var/lang/bin:/usr/local/bin:/usr/bin/:/bin:/opt/bin:{mount_location}/lambda_packages/bin"
+          }
         }
 )
 
-
 pulumi.export('file_system_id', file_system.id)
+pulumi.export('vpc_id', vpc.id)
+pulumi.export('vpc_subnets', [subnet_1.id, subnet_2.id, subnet_3.id])
+pulumi.export('security_group_id', security_group.id)
 
 

@@ -1,1 +1,1 @@
-brew proj
+brew "proj"
