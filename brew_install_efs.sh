@@ -21,6 +21,7 @@ if ! mount | grep -q "$EFS_ID"; then
     sudo mkdir -p efs;
     sudo mount -t efs $EFS_ID:/ efs;
     sudo mkdir -p efs/lambda_packages;
+    echo "Mounted successfully.";
 fi
 
 
@@ -59,6 +60,8 @@ sudo cp -LR /home/linuxbrew/.linuxbrew/lib/* /lambda_packages/lib;
 
 echo 'Done.';
 "
+
+echo "Launching Docker...";
 
 # Run docker to install contents of brewfile
 docker run \
