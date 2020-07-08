@@ -22,6 +22,8 @@ def my_handler(event, context):
     # Simple test to call the `proj_area_create` function on the proj library.  The result
     # is just a pointer if we get that rather than an error, it is working.
 
+    print("A different message")
+
     try:
         projlib = ctypes.CDLL(find_library('proj'))
         result = projlib.proj_area_create()

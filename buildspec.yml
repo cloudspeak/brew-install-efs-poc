@@ -4,16 +4,30 @@ phases:
   install:
     runtime-versions:
       python: 3.8
-  pre_build:
     commands:
-      - echo Nothing to do in the pre_build phase...
+
+      # Setup Pulumi
+      - curl -fsSL https://get.pulumi.com | sh
+      - export PATH=$PATH:$HOME/.pulumi/bin
+      - export PULUMI_ACCESS_TOKEN=$(aws ssm get-parameter --name exampleCodebuild.pulumiAccessToken --with-decryption --output text --query Parameter.Value)
+
+      # Python dependencies
+      - python -m pip install git+https://github.com/nuage-studio/lambda-package.git
+      - python -m pip install -r ./requirements.txt
+
   build:
     commands:
       - echo Build started on `date`
-      - mount
-      - ls
-      - ls /mnt/efs
-      - ./brew_install_efs.sh
+
+      # Package the Lambda
+      - python -m lambda_package src/ -o lambda.zip
+
+      # Deploy the stack
+      - pulumi up -y --stack dev
+
+      # Install Lambda Homebrew dependencies
+      - ./brew_install_efs_codebuild.sh fs-2930fae3
+
       - echo Build done
   post_build:
     commands:
