@@ -12,7 +12,7 @@ phases:
       - echo Build started on `date`
       - mount
       - ls
-      - ls efs
+      - ls /mnt/efs
       - ./brew_install_efs.sh
       - echo Build done
   post_build:
