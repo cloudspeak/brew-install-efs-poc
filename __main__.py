@@ -3,7 +3,7 @@
 import json
 import pulumi
 from pulumi import ResourceOptions
-from pulumi_aws import lambda_, iam, ec2, efs, codebuild
+from pulumi_aws import lambda_, iam, ec2, efs, codebuild, ssm
 from pulumi_aws.get_caller_identity import get_caller_identity
 from pulumi.output import Output
 from typing import Dict
@@ -261,6 +261,11 @@ account_id = get_caller_identity().account_id
 
 project_name = "ExampleBuildDeploy"
 
+pulumi_token_param = ssm.Parameter("examplePulumiAccessToken",
+    type="SecureString",
+    value="none"
+)
+
 codebuild_vpc_policy = iam.Policy("exampleCodeBuildVpcPolicy",
     policy=get_codebuild_vpc_policy(account_id, private_subnet_1.id).apply(json.dumps)
 )
@@ -322,7 +327,14 @@ codebuild_project = codebuild.Project("exampleCodeBuildProject",
       "image": "aws/codebuild/amazonlinux2-x86_64-standard:2.0",
       "privileged_mode": True,
       "type": "LINUX_CONTAINER",
-      "compute_type": "BUILD_GENERAL1_SMALL"
+      "compute_type": "BUILD_GENERAL1_SMALL",
+      "environment_variables": [
+        {
+          "name": "PULUMI_ACCESS_TOKEN",
+          "type": "PARAMETER_STORE",
+          "value": pulumi_token_param.name
+        }
+      ]
     },
     service_role=codebuild_service_role.arn,
     opts=ResourceOptions(depends_on=[vpc,*subnets,security_group])
@@ -361,5 +373,4 @@ pulumi.export('vpc_id', vpc.id)
 pulumi.export('public_subnets', [subnet_1.id, subnet_2.id, subnet_3.id])
 pulumi.export('private_subnet', private_subnet_1.id)
 pulumi.export('security_group_id', security_group.id)
-
-
+pulumi.export('pulumi_access_token_parameter', pulumi_token_param.name)

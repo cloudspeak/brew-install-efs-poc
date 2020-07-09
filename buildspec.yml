@@ -5,11 +5,9 @@ phases:
     runtime-versions:
       python: 3.8
     commands:
-
       # Setup Pulumi
       - curl -fsSL https://get.pulumi.com | sh
       - export PATH=$PATH:$HOME/.pulumi/bin
-      - export PULUMI_ACCESS_TOKEN=$(aws ssm get-parameter --name exampleCodebuild.pulumiAccessToken --with-decryption --output text --query Parameter.Value)
 
       # Python dependencies
       - python -m pip install git+https://github.com/nuage-studio/lambda-package.git
