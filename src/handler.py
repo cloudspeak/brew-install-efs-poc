@@ -16,21 +16,38 @@ def my_handler(event, context):
     print(shutil.which("objdump"))
     print(shutil.which("ld"))
 
-    # Debugging: Check that find_library can see the proj library
-    print("find_library:", find_library('proj'))
+    # Debugging: Check that find_library can see the libraries
+    print("find_library proj:", find_library('proj'))
+    print("find_library exif:", find_library('exif'))
 
-    # Simple test to call the `proj_area_create` function on the proj library.  The result
-    # is just a pointer if we get that rather than an error, it is working.
+    # Simple test to call the `proj_area_create` function on the proj library and the
+    # `exif_content_new` function on the exif library.  If they return a pointer,
+    # they are working.
 
-    print("A different message")
+    proj_result = None
+    exif_result = None
 
     try:
         projlib = ctypes.CDLL(find_library('proj'))
-        result = projlib.proj_area_create()
-        print("Call proj_area_create result:", result)
-        return { 
-            'message' : "Called library successfully",
-            'result': result
-        }
+        proj_result = projlib.proj_area_create()
+        print("Call proj_area_create result:", proj_result)
     except Exception:
-        raise "Failed: could not find library"
+        pass
+
+    try:
+        exiflib = ctypes.CDLL(find_library('exif'))
+        exif_result = exiflib.exif_content_new()
+        print("Call exif_content_new result:", exif_result)
+    except Exception:
+        pass
+
+    if proj_result is None and exif_result is None:
+        raise Exception("Could not find libraries")
+    
+    return { 
+            'message' : "Found a library",
+            'libproj_found': proj_result is not None,
+            'libexif_found': exif_result is not None,
+            'libproj_pointer': proj_result,
+            'libexif_pointer': exif_result,
+        }
