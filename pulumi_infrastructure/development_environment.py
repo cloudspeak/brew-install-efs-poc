@@ -41,6 +41,7 @@ class DevelopmentEnvironment(pulumi.ComponentResource):
         efs_environment = EFS(name, vpc_environment)
         codebuild_environment = CodeBuild(name,
                 vpc_environment=vpc_environment,
+                efs_environment=efs_environment,
                 github_repo_name=github_repo_name,
                 github_version_name=github_version_name
         )

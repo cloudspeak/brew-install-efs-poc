@@ -9,6 +9,7 @@ from pulumi_aws.get_caller_identity import get_caller_identity
 
 from .codebuild_policy import get_codebuild_base_policy, get_codebuild_vpc_policy
 from .vpc import VPC
+from .efs import EFS
 
 class CodeBuild(pulumi.ComponentResource):
     """
@@ -26,11 +27,12 @@ class CodeBuild(pulumi.ComponentResource):
         self,
         name,
         vpc_environment: VPC,
+        efs_environment: EFS,
         github_repo_name: Input[str],
         github_version_name: Input[str] = None,
         opts=None,
     ):
-        super().__init__("nuage:aws:DevelopmentEnvironment:CodeBuild", name, None, opts)
+        super().__init__("nuage:aws:DevelopmentEnvironment:CodeBuild", f"{name}CodebuildEnvironment", None, opts)
 
         # TODO pass this in - with a default?
         def get_codebuild_serice_role_policy():
@@ -119,9 +121,14 @@ class CodeBuild(pulumi.ComponentResource):
             "compute_type": "BUILD_GENERAL1_SMALL",
             "environment_variables": [
                 {
-                "name": "PULUMI_ACCESS_TOKEN",
-                "type": "PARAMETER_STORE",
-                "value": pulumi_token_param.name
+                    "name": "PULUMI_ACCESS_TOKEN",
+                    "type": "PARAMETER_STORE",
+                    "value": pulumi_token_param.name
+                },
+                {
+                    "name": "FILESYSTEM_ID",
+                    "type": "PLAINTEXT",
+                    "value": efs_environment.file_system_id
                 }
             ]
             },

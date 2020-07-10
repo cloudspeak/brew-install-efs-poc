@@ -27,7 +27,7 @@ class VPC(pulumi.ComponentResource):
         name,
         opts=None,
     ):
-        super().__init__("nuage:aws:DevelopmentEnvironment:VPC", name, None, opts)
+        super().__init__("nuage:aws:DevelopmentEnvironment:VPC", f"{name}VpcEnvironment", None, opts)
 
 
         vpc = ec2.Vpc(f"{name}Vpc",

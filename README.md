@@ -65,7 +65,7 @@ After you have deployed the stack the first time, a CodeBuild project will be se
 
 2. On the AWS console, **open the Parameter Store** in the Systems Manager section.  You will see a parameter created by Pulumi (if you have more than one stack, check the Pulumi output to see the name of the parameter it created).  **Set the parameter value to your access token**.
 
-
+3. Go to the CodeBuild console to trigger a build.
 
 ## Known issues and limitations
 
