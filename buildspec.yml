@@ -24,7 +24,7 @@ phases:
       - pulumi up -y --stack dev
 
       # Install Lambda Homebrew dependencies
-      - ./brew_install_efs_codebuild.sh fs-2930fae3
+      - ./brew_install_efs_codebuild.sh ${FILESYSTEM_ID}
 
       - echo Build done
   post_build:

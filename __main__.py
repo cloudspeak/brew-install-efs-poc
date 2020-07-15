@@ -38,9 +38,10 @@ iam.RolePolicyAttachment("VpcAccessPolicyAttach",
 example_function = lambda_.Function("exampleFunction",
         code="lambda.zip",
         source_code_hash=filebase64sha256("lambda.zip"),
-        handler="handler.my_handler",
+        handler="handler.lambda_handler",
         role=example_role.arn,
         runtime="python3.8",
+        timeout=30,
         opts=ResourceOptions(depends_on=[environment]),
         **get_environment_function_args(environment)
 )

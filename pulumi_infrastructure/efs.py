@@ -27,7 +27,7 @@ class EFS(pulumi.ComponentResource):
         vpc_environment: VPC,
         opts=None,
     ):
-        super().__init__("nuage:aws:DevelopmentEnvironment:EFS", name, None, opts)
+        super().__init__("nuage:aws:DevelopmentEnvironment:EFS", f"{name}EfsEnvironment", None, opts)
 
         file_system = efs.FileSystem(f"{name}FileSystem")
         targets = []

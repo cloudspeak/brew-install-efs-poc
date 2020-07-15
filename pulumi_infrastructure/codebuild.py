@@ -9,6 +9,7 @@ from pulumi_aws.get_caller_identity import get_caller_identity
 
 from .codebuild_policy import get_codebuild_base_policy, get_codebuild_vpc_policy
 from .vpc import VPC
+from .efs import EFS
 
 class CodeBuild(pulumi.ComponentResource):
     """
@@ -26,11 +27,12 @@ class CodeBuild(pulumi.ComponentResource):
         self,
         name,
         vpc_environment: VPC,
+        efs_environment: EFS,
         github_repo_name: Input[str],
         github_version_name: Input[str] = None,
         opts=None,
     ):
-        super().__init__("nuage:aws:DevelopmentEnvironment:CodeBuild", name, None, opts)
+        super().__init__("nuage:aws:DevelopmentEnvironment:CodeBuild", f"{name}CodebuildEnvironment", None, opts)
 
         # TODO pass this in - with a default?
         def get_codebuild_serice_role_policy():
@@ -100,30 +102,35 @@ class CodeBuild(pulumi.ComponentResource):
             description="Builds and deploys the stack",
             name=project_name,
             vpc_config={
-            "vpc_id": vpc_environment.vpc.id,
-            "subnets": [vpc_environment.private_subnet],
-            "security_group_ids": [vpc_environment.security_group.id]
+                "vpc_id": vpc_environment.vpc.id,
+                "subnets": [vpc_environment.private_subnet],
+                "security_group_ids": [vpc_environment.security_group.id]
             },
             source={
-            "type": "GITHUB",
-            "location": github_repo_name
+                "type": "GITHUB",
+                "location": github_repo_name
             },
             source_version=github_version_name,
             artifacts={
-            "type": "NO_ARTIFACTS"
+                "type": "NO_ARTIFACTS"
             },
             environment={
-            "image": "aws/codebuild/amazonlinux2-x86_64-standard:2.0",
-            "privileged_mode": True,
-            "type": "LINUX_CONTAINER",
-            "compute_type": "BUILD_GENERAL1_SMALL",
-            "environment_variables": [
-                {
-                "name": "PULUMI_ACCESS_TOKEN",
-                "type": "PARAMETER_STORE",
-                "value": pulumi_token_param.name
-                }
-            ]
+                "image": "aws/codebuild/amazonlinux2-x86_64-standard:2.0",
+                "privileged_mode": True,
+                "type": "LINUX_CONTAINER",
+                "compute_type": "BUILD_GENERAL1_SMALL",
+                "environment_variables": [
+                    {
+                        "name": "PULUMI_ACCESS_TOKEN",
+                        "type": "PARAMETER_STORE",
+                        "value": pulumi_token_param.name
+                    },
+                    {
+                        "name": "FILESYSTEM_ID",
+                        "type": "PLAINTEXT",
+                        "value": efs_environment.file_system_id
+                    }
+                ]
             },
             service_role=codebuild_service_role.arn,
             opts=ResourceOptions(depends_on=[vpc_environment])
